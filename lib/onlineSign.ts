@@ -70,7 +70,7 @@ export function didFromEnv(): string {
 export async function postSigned(room: string, text: string): Promise<{ seq: number; did: string; text: string }> {
   const key = loadKey();
   const did = didFromEnv();
-  const nonce = Date.now().toString();
+  const nonce = `${Date.now()}${String(process.hrtime()[1] % 1_000_000).padStart(6, "0")}`.slice(0, 19);
   const normalized = normalizeMessage(text);
   const payload = Buffer.from(`${room}|${nonce}|${normalized}`, "utf8");
   const signature = sign(null, payload, key).toString("base64url");
