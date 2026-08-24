@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseContract } from "@/lib/ca";
 import { allowRequest } from "@/lib/rateLimit";
 import { postUnsigned } from "@/lib/technocore";
+import { processScan } from "@/lib/processScan";
 import { ROOMS } from "@/lib/config";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const ip =
@@ -32,18 +36,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const text = `SCAN ${parsed.address} kind=${parsed.kind} via flopdesk.web`;
+  const queued = `SCAN ${parsed.address} kind=${parsed.kind} via flopdesk.web`;
+  let queueError: string | undefined;
   try {
-    await postUnsigned(ROOMS.requests, "flopdesk-web", text);
+    await postUnsigned(ROOMS.requests, "flopdesk-web", queued);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Technocore write failed";
-    return NextResponse.json({ error: detail }, { status: 502 });
+    queueError = error instanceof Error ? error.message : "queue failed";
   }
 
-  return NextResponse.json({
-    ok: true,
-    contract: parsed.address,
-    room: ROOMS.requests,
-    hint: `Local desk agent will sign a result into /r/${ROOMS.results}. Keep the watcher running.`,
-  });
+  try {
+    const signed = await processScan(parsed.address);
+    return NextResponse.json({
+      ok: true,
+      contract: parsed.address,
+      queued: !queueError,
+      queueError,
+      skipped: signed.skipped || false,
+      seq: signed.seq,
+      summary: signed.summary,
+      resultUrl: signed.seq
+        ? `https://technocore.chat/humans#r/${ROOMS.results}/${signed.seq}`
+        : `https://technocore.chat/humans#r/${ROOMS.results}`,
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "sign failed";
+    return NextResponse.json(
+      {
+        error: `Queued, but online signing failed: ${detail}`,
+        queueError,
+        contract: parsed.address,
+      },
+      { status: 502 },
+    );
+  }
 }

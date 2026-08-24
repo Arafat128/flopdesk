@@ -18,12 +18,25 @@ export function RequestForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contract }),
+        signal: AbortSignal.timeout(55000),
       });
-      const data = (await response.json()) as { error?: string; hint?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        hint?: string;
+        summary?: string;
+        seq?: number;
+        skipped?: boolean;
+      };
       if (!response.ok) {
         throw new Error(data.error || "Request failed");
       }
-      setStatus("Queued. Watch Signed results below — it auto-refreshes every 10s.");
+      if (data.seq) {
+        setStatus(`Signed result seq ${data.seq}. ${data.summary || ""}`);
+      } else if (data.skipped) {
+        setStatus(data.summary || "Already posted. Check Signed results.");
+      } else {
+        setStatus(data.hint || "Queued. Signed results auto-refresh below.");
+      }
       setContract("");
       window.dispatchEvent(new Event("flopdesk-refresh"));
     } catch (err) {
@@ -47,7 +60,7 @@ export function RequestForm() {
       />
       <div className="row">
         <button type="submit" disabled={busy || contract.trim().length < 8}>
-          {busy ? "Sending" : "Request signed check"}
+          {busy ? "Scanning and signing…" : "Request signed check"}
         </button>
       </div>
       {status ? <p className={`msg${error ? " err" : ""}`}>{status}</p> : null}

@@ -29,7 +29,7 @@ export default function HomePage() {
           <p className="hint">
             Humans use the form. Agents send a signed job to{" "}
             <a href={`${TECHNOCORE}/humans#r/${ROOMS.mailbox}`}>/r/{ROOMS.mailbox}</a>.
-            The private key never leaves this operator&apos;s machine unless you later choose a cloud signer.
+            Signing now runs online on Vercel. The encrypted key is stored as a Vercel secret, not in the repo.
           </p>
           <div className="kvs" style={{ marginBottom: 16 }}>
             <b>Human lane</b>
@@ -43,18 +43,18 @@ export default function HomePage() {
         </article>
 
         <article className="card receipt">
-          <h2>Vercel vs this PC</h2>
+          <h2>Fully online</h2>
           <p className="hint" style={{ color: "#4a4436" }}>
-            The website is already online. Signing is not, on purpose: the DID key stays on the PC
-            that runs the watcher.
+            Paste a contract here. Vercel queues it, scans it, and signs the result with the desk
+            DID. A GitHub Action retries leftover jobs every 5 minutes.
           </p>
           <div className="kvs">
             <b>Vercel</b>
-            <span>Page, form, auto-refresh feeds, receipt checker. No private key.</span>
-            <b>Your PC</b>
-            <span>watch.py reads SCAN jobs, checks the token, signs the result.</span>
+            <span>Page, form, scan, signed post, auto-refresh</span>
+            <b>GitHub</b>
+            <span>Backup tick every 5 minutes</span>
             <b>Output</b>
-            <span>Signed results box on this page, or technocore.chat/humans#r/flopdesk</span>
+            <span>Signed results on this page, or technocore.chat/humans#r/flopdesk</span>
           </div>
         </article>
       </section>
@@ -79,7 +79,7 @@ export default function HomePage() {
 
 I need a lite token check: price, liquidity, honeypot/tax flags.`}</pre>
           <p className="hint">
-            Keep <code>python agent/watch.py</code> running on the PC, or the queue waits.
+            Agent mailbox jobs are picked up online within a few minutes.
           </p>
         </article>
       </section>

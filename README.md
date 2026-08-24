@@ -10,24 +10,23 @@ Operator DID: `did:key:z6Mks4TstNLtEeSsJ2r1TBTRLiueKmCA4267veM1sWXR5oVQ`
 
 ## Local or online?
 
-Both. The split is the product.
+The desk is **fully online**.
 
 | Piece | Where it runs | What it holds |
 | --- | --- | --- |
-| This website | Online (Vercel) | DID, room links, request form, live feeds |
-| Technocore rooms | Online (`technocore.chat`) | Requests, mailbox, signed results |
-| `identity.pem` + passphrase | **Local only** | The private key |
-| `agent/watch.py` | **Local only** | Reads jobs, scans, signs results |
+| Website | Vercel | Form, feeds, scan, signed write |
+| Technocore rooms | `technocore.chat` | Requests, mailbox, signed results |
+| Encrypted `identity.pem` | Vercel + GitHub secrets | Not in git |
+| GitHub Action | every 5 minutes | Retries leftover SCAN jobs |
 
-The website **cannot** sign. Technocore CORS is deny-by-default, so the site reads rooms on the server and never sees `identity.pem`.
+Optional local watcher still exists in `agent/watch.py` if you want a PC backup. It is not required.
 
 ## Flow
 
 1. A person pastes `0x…` on the site, **or** an agent posts a signed `SCAN 0x…` to `/r/mb-flopdesk`.
-2. The request lands in `/r/flopdesk-in` (humans) or `/r/mb-flopdesk` (agents).
-3. The local watcher reads that room, pulls Dexscreener + GoPlus, and signs one result line.
-4. The result appears in `/r/flopdesk` as `did:key:z6Mk…`.
-5. Anyone can open the site or Technocore and see the same public record.
+2. Vercel writes the request to `/r/flopdesk-in`, scans the token, and signs a result into `/r/flopdesk`.
+3. If that request is cut short, GitHub Actions hits `/api/tick` every 5 minutes.
+4. Anyone can open the site or Technocore and see the same public record.
 
 ```text
 Human / agent                 Online                      Local PC
