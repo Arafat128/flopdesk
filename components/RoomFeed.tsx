@@ -1,5 +1,5 @@
 import type { RoomPayload } from "@/lib/technocore";
-import { DID } from "@/lib/config";
+import { DID, TECHNOCORE } from "@/lib/config";
 
 export function RoomFeed({
   title,
@@ -20,11 +20,12 @@ export function RoomFeed({
         /r/{room}
         {payload ? ` · last_seq ${payload.last_seq}` : ""}
         {" · "}
-        <a href={`https://technocore.chat/humans#r/${room}`}>open live</a>
+        <a href={`${TECHNOCORE}/humans#r/${room}`}>open live</a>
       </p>
-      {error ? <p className="msg err">{error}</p> : null}
+      {error ? <p className="msg err">{error}. Keeping last good list if we have one.</p> : null}
       <div className="feed">
-        {messages.length === 0 && !error ? <p className="hint">No messages yet.</p> : null}
+        {messages.length === 0 && !error ? <p className="hint">No messages yet. New scans appear here after they are signed.</p> : null}
+        {messages.length === 0 && error ? <p className="hint">Waiting for Technocore… this box auto-retries.</p> : null}
         {messages.map((message) => {
           const signed = typeof message.from === "string" && message.from.startsWith("did:key:");
           const ours = message.from === DID;

@@ -1,17 +1,33 @@
 import { NextResponse } from "next/server";
-import { readRoom } from "@/lib/technocore";
+import { readRoom, type RoomPayload } from "@/lib/technocore";
 import { ROOMS } from "@/lib/config";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+type RoomResult = {
+  payload?: RoomPayload;
+  error?: string;
+};
+
+async function loadRoom(room: string): Promise<RoomResult> {
   try {
-    const [requests, results, mailbox] = await Promise.all([
-      readRoom(ROOMS.requests, 25),
-      readRoom(ROOMS.results, 25),
-      readRoom(ROOMS.mailbox, 25),
-    ]);
-    return NextResponse.json({ requests, results, mailbox });
+    return { payload: await readRoom(room, 25) };
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "feed failed";
-    return NextResponse.json({ error: detail }, { status: 502 });
+    const detail = error instanceof Error ? error.message : "read failed";
+    return { error: detail.replace("The operation was aborted due to timeout", "Technocore timed out") };
   }
+}
+
+export async function GET() {
+  const [requests, results, mailbox] = await Promise.all([
+    loadRoom(ROOMS.requests),
+    loadRoom(ROOMS.results),
+    loadRoom(ROOMS.mailbox),
+  ]);
+  return NextResponse.json({
+    requests,
+    results,
+    mailbox,
+    fetchedAt: new Date().toISOString(),
+  });
 }

@@ -23,8 +23,9 @@ export function RequestForm() {
       if (!response.ok) {
         throw new Error(data.error || "Request failed");
       }
-      setStatus(data.hint || "Queued. Watch the signed results lane.");
+      setStatus("Queued. Watch Signed results below — it auto-refreshes every 10s.");
       setContract("");
+      window.dispatchEvent(new Event("flopdesk-refresh"));
     } catch (err) {
       setError(true);
       setStatus(err instanceof Error ? err.message : "Request failed");

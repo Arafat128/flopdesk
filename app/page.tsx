@@ -1,26 +1,9 @@
 import { DID, ROOMS, SITE, TECHNOCORE } from "@/lib/config";
-import { readRoom } from "@/lib/technocore";
 import { RequestForm } from "@/components/RequestForm";
-import { RoomFeed } from "@/components/RoomFeed";
+import { LiveFeeds } from "@/components/LiveFeeds";
 import { VerifyBox } from "@/components/VerifyBox";
 
-export const dynamic = "force-dynamic";
-
-async function loadRoom(room: string) {
-  try {
-    return { payload: await readRoom(room, 20) };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "read failed" };
-  }
-}
-
-export default async function HomePage() {
-  const [requests, results, mailbox] = await Promise.all([
-    loadRoom(ROOMS.requests),
-    loadRoom(ROOMS.results),
-    loadRoom(ROOMS.mailbox),
-  ]);
-
+export default function HomePage() {
   return (
     <main className="wrap">
       <header className="top">
@@ -46,7 +29,7 @@ export default async function HomePage() {
           <p className="hint">
             Humans use the form. Agents send a signed job to{" "}
             <a href={`${TECHNOCORE}/humans#r/${ROOMS.mailbox}`}>/r/{ROOMS.mailbox}</a>.
-            The private key never leaves this operator&apos;s machine.
+            The private key never leaves this operator&apos;s machine unless you later choose a cloud signer.
           </p>
           <div className="kvs" style={{ marginBottom: 16 }}>
             <b>Human lane</b>
@@ -60,39 +43,30 @@ export default async function HomePage() {
         </article>
 
         <article className="card receipt">
-          <h2>How the split works</h2>
+          <h2>Vercel vs this PC</h2>
           <p className="hint" style={{ color: "#4a4436" }}>
-            Online site shows identity, queues work, and displays rooms. Local watcher
-            holds identity.pem, reads new SCAN jobs, fetches market/risk data, then
-            posts a signed Technocore result.
+            The website is already online. Signing is not, on purpose: the DID key stays on the PC
+            that runs the watcher.
           </p>
           <div className="kvs">
-            <b>Online</b>
-            <span>This website + Technocore rooms</span>
-            <b>Local</b>
-            <span>identity.pem, watcher, optional HertzFlow</span>
-            <b>Not here</b>
-            <span>No seed phrase. No wallet. No private key on Vercel.</span>
+            <b>Vercel</b>
+            <span>Page, form, auto-refresh feeds, receipt checker. No private key.</span>
+            <b>Your PC</b>
+            <span>watch.py reads SCAN jobs, checks the token, signs the result.</span>
+            <b>Output</b>
+            <span>Signed results box on this page, or technocore.chat/humans#r/flopdesk</span>
           </div>
         </article>
       </section>
 
-      <section className="grid">
-        <article className="card">
-          <RoomFeed title="Signed results" room={ROOMS.results} payload={results.payload} error={results.error} />
-        </article>
-        <article className="card">
-          <RoomFeed title="Human requests" room={ROOMS.requests} payload={requests.payload} error={requests.error} />
-          <RoomFeed title="Agent mailbox" room={ROOMS.mailbox} payload={mailbox.payload} error={mailbox.error} />
-        </article>
-      </section>
+      <LiveFeeds />
 
       <section className="grid">
         <article className="card">
           <h2>Verify a receipt</h2>
           <p className="hint">
-            Room JSON does not include signatures. If you saved a
-            technocore-signed-receipt-v1 file, check it in the browser.
+            Optional crypto check for a saved JSON receipt. This is not the token output.
+            Token output is Signed results above.
           </p>
           <VerifyBox />
         </article>
@@ -105,8 +79,7 @@ export default async function HomePage() {
 
 I need a lite token check: price, liquidity, honeypot/tax flags.`}</pre>
           <p className="hint">
-            Keep the local watcher running or the queue will sit until someone starts{" "}
-            <code>python agent/watch.py</code>.
+            Keep <code>python agent/watch.py</code> running on the PC, or the queue waits.
           </p>
         </article>
       </section>

@@ -21,7 +21,7 @@ export async function readRoom(room: string, limit = 40): Promise<RoomPayload> {
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "flopdesk/1.0" },
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(12000),
   });
   if (!response.ok) {
     throw new Error(`Technocore ${room} HTTP ${response.status}`);
@@ -39,6 +39,7 @@ export async function postUnsigned(room: string, nick: string, text: string): Pr
     method: "GET",
     headers: { "User-Agent": "flopdesk/1.0" },
     cache: "no-store",
+    signal: AbortSignal.timeout(15000),
   });
   const body = await response.text();
   if (!response.ok) {
