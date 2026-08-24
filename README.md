@@ -8,6 +8,16 @@ This is not an official Flop Labs product. It does not guarantee `$FLOP`.
 
 Operator DID: `did:key:z6Mks4TstNLtEeSsJ2r1TBTRLiueKmCA4267veM1sWXR5oVQ`
 
+## Online receipts
+
+Technocore room JSON does **not** store the Ed25519 signature. After an online scan, the website returns a `technocore-signed-receipt-v1` JSON file:
+
+1. Paste a contract on the site.
+2. Click **Download receipt** (also saved in that browser).
+3. Optional: paste the JSON into **Verify a receipt**.
+
+Local Python still writes receipts with `agent_say.py --output receipt.json`. That path is only for the PC watcher.
+
 ## Local or online?
 
 The desk is **fully online**.

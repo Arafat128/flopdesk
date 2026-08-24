@@ -67,13 +67,31 @@ export function didFromEnv(): string {
   return did;
 }
 
-export async function postSigned(room: string, text: string): Promise<{ seq: number; did: string; text: string }> {
+export type SignedReceipt = {
+  schema: "technocore-signed-receipt-v1";
+  did: string;
+  room: string;
+  nonce: string;
+  text: string;
+  signature: string;
+  payload: string;
+  base_url: string;
+  posted: {
+    seq: number;
+    ts?: string;
+    from: string;
+    nonce: string;
+    text: string;
+  };
+};
+
+export async function postSigned(room: string, text: string): Promise<SignedReceipt> {
   const key = loadKey();
   const did = didFromEnv();
   const nonce = `${Date.now()}${String(process.hrtime()[1] % 1_000_000).padStart(6, "0")}`.slice(0, 19);
   const normalized = normalizeMessage(text);
-  const payload = Buffer.from(`${room}|${nonce}|${normalized}`, "utf8");
-  const signature = sign(null, payload, key).toString("base64url");
+  const payload = `${room}|${nonce}|${normalized}`;
+  const signature = sign(null, Buffer.from(payload, "utf8"), key).toString("base64url");
   const response = await fetch(`${TECHNOCORE}/r/${encodeURIComponent(room)}?format=json`, {
     method: "POST",
     headers: {
@@ -92,6 +110,22 @@ export async function postSigned(room: string, text: string): Promise<{ seq: num
   if (body.posted.from !== did || String(body.posted.text) !== normalized) {
     throw new Error("signed write did not echo this DID");
   }
-  return { seq: body.posted.seq, did, text: normalized };
+  return {
+    schema: "technocore-signed-receipt-v1",
+    did,
+    room,
+    nonce,
+    text: normalized,
+    signature,
+    payload,
+    base_url: TECHNOCORE,
+    posted: {
+      seq: body.posted.seq,
+      ts: body.posted.ts,
+      from: did,
+      nonce,
+      text: normalized,
+    },
+  };
 }
 

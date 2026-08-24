@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       skipped: signed.skipped || false,
       seq: signed.seq,
       summary: signed.summary,
+      receipt: signed.receipt || null,
       resultUrl: signed.seq
         ? `https://technocore.chat/humans#r/${ROOMS.results}/${signed.seq}`
         : `https://technocore.chat/humans#r/${ROOMS.results}`,

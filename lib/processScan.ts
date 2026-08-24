@@ -1,6 +1,6 @@
 import { extractContract } from "./ca";
 import { ROOMS } from "./config";
-import { postSigned } from "./onlineSign";
+import { postSigned, type SignedReceipt } from "./onlineSign";
 import { scanToken } from "./scanLite";
 import { readRoom } from "./technocore";
 
@@ -22,13 +22,14 @@ export async function processScan(address: string): Promise<{
   seq?: number;
   summary: string;
   skipped?: boolean;
+  receipt?: SignedReceipt;
 }> {
   if (await alreadyPosted(address)) {
     return { summary: `already posted ${address}`, skipped: true };
   }
   const result = await scanToken(address);
-  const posted = await postSigned(ROOMS.results, result.summary);
-  return { seq: posted.seq, summary: posted.text };
+  const receipt = await postSigned(ROOMS.results, result.summary);
+  return { seq: receipt.posted.seq, summary: receipt.text, receipt };
 }
 
 export async function processQueuedJobs(limit = 3): Promise<{ processed: string[] }> {

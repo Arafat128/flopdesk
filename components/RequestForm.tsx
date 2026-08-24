@@ -1,18 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type Receipt = {
+  schema: string;
+  did: string;
+  room: string;
+  nonce: string;
+  text: string;
+  signature: string;
+  payload: string;
+  posted?: { seq: number };
+};
+
+const STORE = "flopdesk.receipts";
+
+function loadStored(): Receipt[] {
+  try {
+    const raw = localStorage.getItem(STORE);
+    const parsed = raw ? (JSON.parse(raw) as Receipt[]) : [];
+    return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStored(receipts: Receipt[]) {
+  localStorage.setItem(STORE, JSON.stringify(receipts.slice(0, 10)));
+}
+
+function downloadReceipt(receipt: Receipt) {
+  const seq = receipt.posted?.seq ?? "new";
+  const blob = new Blob([JSON.stringify(receipt, null, 2) + "\n"], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `flopdesk-receipt-seq-${seq}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function copyReceipt(receipt: Receipt) {
+  await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
+}
 
 export function RequestForm() {
   const [contract, setContract] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [saved, setSaved] = useState<Receipt[]>([]);
+
+  useEffect(() => {
+    setSaved(loadStored());
+  }, []);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(false);
-    setStatus("Sending request…");
+    setReceipt(null);
+    setStatus("Scanning and signing online…");
     try {
       const response = await fetch("/api/request", {
         method: "POST",
@@ -22,20 +73,25 @@ export function RequestForm() {
       });
       const data = (await response.json()) as {
         error?: string;
-        hint?: string;
         summary?: string;
         seq?: number;
         skipped?: boolean;
+        receipt?: Receipt | null;
+        resultUrl?: string;
       };
       if (!response.ok) {
         throw new Error(data.error || "Request failed");
       }
-      if (data.seq) {
-        setStatus(`Signed result seq ${data.seq}. ${data.summary || ""}`);
+      if (data.receipt) {
+        setReceipt(data.receipt);
+        const next = [data.receipt, ...loadStored().filter((item) => item.posted?.seq !== data.receipt?.posted?.seq)];
+        saveStored(next);
+        setSaved(next);
+        setStatus(`Signed seq ${data.seq}. Download the receipt below — Technocore does not keep the signature.`);
       } else if (data.skipped) {
-        setStatus(data.summary || "Already posted. Check Signed results.");
+        setStatus("Already on the results board. A new receipt is only issued when this desk signs a fresh line.");
       } else {
-        setStatus(data.hint || "Queued. Signed results auto-refresh below.");
+        setStatus(data.summary || "Queued. Signed results auto-refresh below.");
       }
       setContract("");
       window.dispatchEvent(new Event("flopdesk-refresh"));
@@ -64,6 +120,39 @@ export function RequestForm() {
         </button>
       </div>
       {status ? <p className={`msg${error ? " err" : ""}`}>{status}</p> : null}
+
+      {receipt ? (
+        <div className="receipt-box">
+          <p className="hint">
+            Online receipt for seq {receipt.posted?.seq}. This JSON is the only copy of the
+            signature. Save it if you want to verify later.
+          </p>
+          <div className="row">
+            <button type="button" onClick={() => downloadReceipt(receipt)}>
+              Download receipt
+            </button>
+            <button type="button" className="ghost" onClick={() => void copyReceipt(receipt)}>
+              Copy JSON
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {saved.length > 0 ? (
+        <div className="receipt-box">
+          <p className="hint">Receipts saved in this browser</p>
+          {saved.slice(0, 5).map((item) => (
+            <div className="row" key={`${item.nonce}-${item.posted?.seq || "x"}`}>
+              <span className="hint" style={{ margin: 0 }}>
+                seq {item.posted?.seq ?? "?"}
+              </span>
+              <button type="button" className="ghost" onClick={() => downloadReceipt(item)}>
+                Download
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </form>
   );
 }

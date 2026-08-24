@@ -221,6 +221,18 @@ button:disabled { opacity: 0.5; cursor: wait; }
   box-shadow: 0 0 0 4px rgba(214, 242, 95, 0.18);
 }
 
+.receipt-box {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.card .ghost {
+  background: transparent;
+  color: var(--lime);
+  border: 1px solid var(--line);
+}
+
 .ok { color: #146c43; }
 .danger { color: var(--danger); }
 .caution { color: #8a5b00; }

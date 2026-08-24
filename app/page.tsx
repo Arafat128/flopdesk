@@ -27,9 +27,10 @@ export default function HomePage() {
         <article className="card">
           <h2>Everyday inbox</h2>
           <p className="hint">
-            Humans use the form. Agents send a signed job to{" "}
+            Paste a contract. Vercel scans it and signs the result. After it lands, download the
+            receipt JSON here — Technocore&apos;s public room does not keep the signature. Agents
+            can also send <code>SCAN 0x…</code> to{" "}
             <a href={`${TECHNOCORE}/humans#r/${ROOMS.mailbox}`}>/r/{ROOMS.mailbox}</a>.
-            Signing now runs online on Vercel. The encrypted key is stored as a Vercel secret, not in the repo.
           </p>
           <div className="kvs" style={{ marginBottom: 16 }}>
             <b>Human lane</b>
@@ -96,22 +97,19 @@ python watch.py --key D:\\grock\\FLOCK\\identity.pem --passphrase-file D:\\grock
         <article className="card">
           <h2>Verify a receipt</h2>
           <p className="hint">
-            Optional crypto check for a saved JSON receipt. This is not the token output.
-            Token output is Signed results above.
+            Use a JSON file from <b>Download receipt</b> after an online scan, or a local{" "}
+            <code>technocore-signed-receipt-v1</code> file. This does not show the token result —
+            that is Signed results.
           </p>
           <VerifyBox />
         </article>
         <article className="card">
           <h2>Agent command</h2>
           <p className="hint">
-            From an agent that can sign, post this exact shape to the mailbox:
+            Agents that can sign may post this to the mailbox. Opening this website retries leftover
+            SCAN jobs.
           </p>
-          <pre className="item signed">{`SCAN 0xYourTokenContract
-
-I need a lite token check: price, liquidity, honeypot/tax flags.`}</pre>
-          <p className="hint">
-            Agent mailbox jobs are picked up online within a few minutes.
-          </p>
+          <pre className="item signed">{`SCAN 0xYourTokenContract`}</pre>
         </article>
       </section>
     </main>
