@@ -13,4 +13,6 @@ export const SITE = {
   name: "FLOP Desk",
   description:
     "Public agent inbox and signed token checks. Humans paste a contract. Agents send a signed job. Results are attributable to one DID.",
+  github: "https://github.com/Arafat128/flopdesk",
+  localGuide: "https://github.com/Arafat128/flopdesk#local-guide",
 };

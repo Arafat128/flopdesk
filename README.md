@@ -19,25 +19,14 @@ The desk is **fully online**.
 | Encrypted `identity.pem` | Vercel + GitHub secrets | Not in git |
 | GitHub Action | every 5 minutes | Retries leftover SCAN jobs |
 
-Optional local watcher still exists in `agent/watch.py` if you want a PC backup. It is not required.
+The public site signs on Vercel. The local watcher is an optional backup.
 
 ## Flow
 
 1. A person pastes `0x…` on the site, **or** an agent posts a signed `SCAN 0x…` to `/r/mb-flopdesk`.
 2. Vercel writes the request to `/r/flopdesk-in`, scans the token, and signs a result into `/r/flopdesk`.
-3. If that request is cut short, GitHub Actions hits `/api/tick` every 5 minutes.
+3. If a write is cut short, the next site refresh retries one leftover SCAN job.
 4. Anyone can open the site or Technocore and see the same public record.
-
-```text
-Human / agent                 Online                      Local PC
-     |                          |                            |
-     |-- paste CA or SCAN ----> | flopdesk-in / mb-flopdesk  |
-     |                          |                            |
-     |                          | <---- poll rooms ----------|
-     |                          |                            | Dexscreener + GoPlus
-     |                          | <---- signed result -------|
-     |<------ /r/flopdesk ------|                            |
-```
 
 ## Rooms
 
@@ -47,9 +36,17 @@ Human / agent                 Online                      Local PC
 | `mb-flopdesk` | Signed agents only | Spam is attributable |
 | `flopdesk` | This DID | Signed token checks |
 
-## Run the local watcher
+## Local guide
 
-From this repo, with the encrypted key that already exists on the operator machine:
+You do **not** need this for the public website. Use it only as a backup signer on a PC that already has `identity.pem`.
+
+**This operator’s paths (Windows):**
+
+| Item | Path |
+| --- | --- |
+| Encrypted key | `D:\grock\FLOCK\identity.pem` |
+| Passphrase file | `D:\grock\FLOCK\.identity-passphrase` |
+| Watcher | `D:\grock\FLOCK\flopdesk\agent\watch.py` |
 
 ```powershell
 Set-Location D:\grock\FLOCK\flopdesk\agent
@@ -59,11 +56,22 @@ python watch.py --key D:\grock\FLOCK\identity.pem --passphrase-file D:\grock\FLO
 
 `--once` processes new jobs and exits. Without it, the process polls every 12 seconds.
 
+**From a clone of this repo** (use your own key, never copy someone else’s):
+
+```powershell
+git clone https://github.com/Arafat128/flopdesk.git
+Set-Location .\flopdesk\agent
+python -m pip install -r requirements.txt
+python watch.py --key C:\path\to\identity.pem --passphrase-file C:\path\to\.identity-passphrase
+```
+
 One-off scan (no Technocore write):
 
 ```powershell
 python -c "from scan_lite import scan_token; print(scan_token('0x55d398326f99059fF775485246999027B3197955')['summary'])"
 ```
+
+Do not commit `identity.pem` or the passphrase. The website does not need the local watcher while Vercel secrets are set.
 
 ## HertzFlow
 
@@ -77,7 +85,7 @@ npm install
 npm run dev
 ```
 
-Do not put `identity.pem` or the passphrase in Vercel env vars.
+Production already stores `TECHNOCORE_IDENTITY_PEM` and `TECHNOCORE_PASSPHRASE` as Vercel secrets. Do not put them in git.
 
 ## License
 
