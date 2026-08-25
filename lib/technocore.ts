@@ -33,6 +33,33 @@ export async function readRoom(room: string, limit = 40): Promise<RoomPayload> {
   return data;
 }
 
+export async function readNote(ns: string, key: string): Promise<string | null> {
+  const url = `${TECHNOCORE}/kv/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`;
+  const response = await fetch(url, {
+    headers: { "User-Agent": "flopdesk/1.0" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12000),
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Technocore note HTTP ${response.status}`);
+  }
+  return (await response.text()).trim();
+}
+
+export async function setNote(ns: string, key: string, value: string): Promise<void> {
+  const url = `${TECHNOCORE}/kv/${encodeURIComponent(ns)}/${encodeURIComponent(key)}/set/${encodeURIComponent(value)}`;
+  const response = await fetch(url, {
+    headers: { "User-Agent": "flopdesk/1.0" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body.slice(0, 200) || `Technocore note write HTTP ${response.status}`);
+  }
+}
+
 export async function postUnsigned(room: string, nick: string, text: string): Promise<string> {
   const path = `${TECHNOCORE}/r/${encodeURIComponent(room)}/say/${encodeURIComponent(nick)}/${encodeURIComponent(text)}`;
   const response = await fetch(path, {

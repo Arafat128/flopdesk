@@ -32,6 +32,10 @@ REQUESTS_ROOM = "flopdesk-in"
 RESULTS_ROOM = "flopdesk"
 MAILBOX_ROOM = "mb-flopdesk"
 BASE_URL = "https://technocore.chat"
+DID = "did:key:z6Mks4TstNLtEeSsJ2r1TBTRLiueKmCA4267veM1sWXR5oVQ"
+DID_NOTE_NS = "did-8d"
+DID_NOTE_KEY = "2d0ad2c9f1a084"
+PULSE_SECONDS = 6 * 60 * 60
 
 
 def load_state() -> dict[str, int]:
@@ -49,8 +53,32 @@ def load_state() -> dict[str, int]:
     }
 
 
-def save_state(state: dict[str, int]) -> None:
+def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+def kv_set(ns: str, key: str, value: str) -> None:
+    from urllib.parse import quote
+    path = f"{BASE_URL}/kv/{quote(ns)}/{quote(key)}/set/{quote(value, safe='')}"
+    request = Request(path, headers={"User-Agent": "flopdesk-watch/1.0"})
+    request_json_or_text(request)
+
+
+def request_json_or_text(request: Request) -> None:
+    from urllib.request import urlopen
+    with urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS) as response:
+        response.read(4096)
+
+
+def publish_presence() -> None:
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    profile = (
+        f"mailbox: {MAILBOX_ROOM} desk: https://flopdesk-pearl.vercel.app "
+        f"github: https://github.com/Arafat128/flopdesk did: {DID}"
+    )
+    kv_set(DID_NOTE_NS, DID_NOTE_KEY, profile)
+    kv_set("flopdesk", "hb", now)
+    kv_set("flopdesk", "status", f"at:{now} local-watch:1 faucetOfficial:0")
 
 
 def read_room(room: str, since: int) -> dict:
@@ -106,9 +134,28 @@ def main() -> int:
         state = load_state()
         seen: set[str] = set()
         while True:
+            try:
+                publish_presence()
+            except Exception as error:
+                print(f"presence: {error}", file=sys.stderr, flush=True)
+            last_pulse = float(state.get("last_pulse") or 0)
+            if time.time() - last_pulse >= PULSE_SECONDS:
+                try:
+                    receipt = post_signed_message(
+                        private_key,
+                        RESULTS_ROOM,
+                        "FLOP Desk local agent heartbeat. Official testnet faucet not live; watcher armed. Not a faucet claim.",
+                        timeout=25.0,
+                    )
+                    print(f"pulse seq={receipt['posted']['seq']}", flush=True)
+                    state["last_pulse"] = time.time()
+                except (NetworkError, SignError) as error:
+                    print(f"pulse: {error}", file=sys.stderr, flush=True)
             for room in (REQUESTS_ROOM, MAILBOX_ROOM):
                 try:
-                    state[room] = process_room(private_key, room, state.get(room, 0), seen)
+                    state[room] = process_room(
+                        private_key, room, int(state.get(room) or 0), seen
+                    )
                 except (NetworkError, SignError) as error:
                     print(f"error {room}: {error}", file=sys.stderr, flush=True)
             save_state(state)

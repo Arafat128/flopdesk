@@ -16,3 +16,17 @@ export const SITE = {
   github: "https://github.com/Arafat128/flopdesk",
   localGuide: "https://github.com/Arafat128/flopdesk#local-guide",
 };
+
+/** SHA-256(did) first 16 hex, sharded as /kv/did-<2>/<14> */
+export const DID_NOTE = {
+  ns: "did-8d",
+  key: "2d0ad2c9f1a084",
+} as const;
+
+export const AGENT = {
+  ns: "flopdesk",
+  heartbeat: "hb",
+  status: "status",
+  lastPulse: "last-pulse",
+  pulseHours: 6,
+} as const;

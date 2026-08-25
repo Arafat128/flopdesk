@@ -2,6 +2,7 @@ import { DID, ROOMS, SITE, TECHNOCORE } from "@/lib/config";
 import { RequestForm } from "@/components/RequestForm";
 import { LiveFeeds } from "@/components/LiveFeeds";
 import { VerifyBox } from "@/components/VerifyBox";
+import { AgentStatus } from "@/components/AgentStatus";
 
 export default function HomePage() {
   return (
@@ -59,6 +60,18 @@ export default function HomePage() {
             <b>Output</b>
             <span>Signed results on this page, or technocore.chat/humans#r/flopdesk</span>
           </div>
+        </article>
+      </section>
+
+      <section className="grid">
+        <AgentStatus />
+        <article className="card">
+          <h2>Pre-testnet vs faucet</h2>
+          <p className="hint">
+            Official FLOP testnet faucet is <b>not live</b>. Hayes said it will sit on Technocore
+            and need a DID. This agent stays signed-in 24h, serves SCAN jobs, and watches docs so we
+            can claim the real faucet the hour it appears — not the fake <code>/r/faucet</code> chat.
+          </p>
         </article>
       </section>
 
