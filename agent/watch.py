@@ -47,10 +47,10 @@ def load_state() -> dict[str, int]:
         return {REQUESTS_ROOM: 0, MAILBOX_ROOM: 0}
     if not isinstance(data, dict):
         return {REQUESTS_ROOM: 0, MAILBOX_ROOM: 0}
-    return {
-        REQUESTS_ROOM: int(data.get(REQUESTS_ROOM) or 0),
-        MAILBOX_ROOM: int(data.get(MAILBOX_ROOM) or 0),
-    }
+    out = dict(data)
+    out[REQUESTS_ROOM] = int(data.get(REQUESTS_ROOM) or 0)
+    out[MAILBOX_ROOM] = int(data.get(MAILBOX_ROOM) or 0)
+    return out
 
 
 def save_state(state: dict) -> None:
@@ -100,8 +100,10 @@ def process_room(private_key, room: str, since: int, seen: set[str]) -> int:
         if isinstance(seq, int):
             cursor = max(cursor, seq)
         text = str(message.get("text") or "")
+        if "SCAN" not in text.upper():
+            continue
         address = extract_contract(text)
-        if not address:
+        if not address or not address.lower().startswith("0x"):
             continue
         key = address.lower()
         if key in seen:

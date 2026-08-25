@@ -1,7 +1,5 @@
-import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { readRoom, type RoomPayload } from "@/lib/technocore";
-import { processQueuedJobs } from "@/lib/processScan";
 import { ROOMS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +24,6 @@ export async function GET() {
     loadRoom(ROOMS.results),
     loadRoom(ROOMS.mailbox),
   ]);
-  after(async () => {
-    try {
-      await processQueuedJobs(1);
-    } catch {
-      /* leftover SCAN jobs retry on the next refresh */
-    }
-  });
   return NextResponse.json({
     requests,
     results,

@@ -15,13 +15,12 @@ export function parseContract(raw: string): { address: string; kind: ContractKin
 }
 
 export function extractContract(text: string): { address: string; kind: ContractKind } | null {
-  const evm = text.match(/0x[a-fA-F0-9]{40}/);
-  if (evm) {
-    return { address: evm[0], kind: "evm" };
+  if (!/\bSCAN\b/i.test(text)) {
+    return null;
   }
-  const sol = text.match(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/);
-  if (sol) {
-    return { address: sol[0], kind: "solana" };
+  const evm = text.match(/0x[a-fA-F0-9]{40}/);
+  if (evm && EVM.test(evm[0])) {
+    return { address: evm[0], kind: "evm" };
   }
   return null;
 }

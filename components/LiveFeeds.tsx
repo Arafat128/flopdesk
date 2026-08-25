@@ -96,6 +96,7 @@ export function LiveFeeds() {
             room={ROOMS.results}
             payload={feed.results.payload}
             error={feed.results.error}
+            onlyOurs
           />
         </article>
         <article className="card">

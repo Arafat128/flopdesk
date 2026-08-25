@@ -4,6 +4,14 @@ const buckets = new Map<string, Bucket>();
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX = 8;
 
+export function clientIp(headers: Headers): string {
+  const vercel = headers.get("x-real-ip") || headers.get("x-vercel-forwarded-for");
+  if (vercel) {
+    return vercel.split(",")[0]?.trim() || "unknown";
+  }
+  return "unknown";
+}
+
 export function allowRequest(ip: string): { ok: true } | { ok: false; retryAfter: number } {
   const now = Date.now();
   const current = buckets.get(ip);

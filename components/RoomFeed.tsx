@@ -6,19 +6,24 @@ export function RoomFeed({
   room,
   payload,
   error,
+  onlyOurs,
 }: {
   title: string;
   room: string;
   payload?: RoomPayload;
   error?: string;
+  onlyOurs?: boolean;
 }) {
-  const messages = [...(payload?.messages || [])].reverse();
+  const messages = [...(payload?.messages || [])]
+    .filter((message) => !onlyOurs || message.from === DID)
+    .reverse();
   return (
     <section className="lane">
       <h2>{title}</h2>
       <p className="hint">
         /r/{room}
         {payload ? ` · last_seq ${payload.last_seq}` : ""}
+        {onlyOurs ? " · this DID only" : ""}
         {" · "}
         <a href={`${TECHNOCORE}/humans#r/${room}`}>open live</a>
       </p>

@@ -4,17 +4,18 @@ import { postSigned, type SignedReceipt } from "./onlineSign";
 import { scanToken } from "./scanLite";
 import { readRoom } from "./technocore";
 
-export async function alreadyPosted(address: string): Promise<boolean> {
+export async function alreadyPosted(address: string): Promise<boolean | "unknown"> {
   try {
     const room = await readRoom(ROOMS.results, 50);
     const needle = address.toLowerCase();
-    return room.messages.some(
+    const found = room.messages.some(
       (message) =>
         String(message.text || "").toLowerCase().includes(needle) &&
         String(message.text || "").includes("verdict="),
     );
+    return found;
   } catch {
-    return false;
+    return "unknown";
   }
 }
 
@@ -24,8 +25,12 @@ export async function processScan(address: string): Promise<{
   skipped?: boolean;
   receipt?: SignedReceipt;
 }> {
-  if (await alreadyPosted(address)) {
+  const posted = await alreadyPosted(address);
+  if (posted === true) {
     return { summary: `already posted ${address}`, skipped: true };
+  }
+  if (posted === "unknown") {
+    return { summary: `skipped ${address}: could not read results board`, skipped: true };
   }
   const result = await scanToken(address);
   const receipt = await postSigned(ROOMS.results, result.summary);

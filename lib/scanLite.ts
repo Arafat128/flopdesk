@@ -58,6 +58,9 @@ async function bestPair(address: string): Promise<any | null> {
 }
 
 export async function scanToken(address: string): Promise<ScanResult> {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    throw new Error("refusing scan of non-EVM address");
+  }
   let pair = await bestPair(address);
   if (!pair) {
     await new Promise((resolve) => setTimeout(resolve, 800));

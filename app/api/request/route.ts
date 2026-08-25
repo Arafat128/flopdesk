@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseContract } from "@/lib/ca";
-import { allowRequest } from "@/lib/rateLimit";
+import { allowRequest, clientIp } from "@/lib/rateLimit";
 import { postUnsigned } from "@/lib/technocore";
 import { processScan } from "@/lib/processScan";
 import { ROOMS } from "@/lib/config";
@@ -9,10 +9,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  const ip = clientIp(request.headers);
   const gate = allowRequest(ip);
   if (!gate.ok) {
     return NextResponse.json(
@@ -60,11 +57,9 @@ export async function POST(request: NextRequest) {
         : `https://technocore.chat/humans#r/${ROOMS.results}`,
     });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "sign failed";
     return NextResponse.json(
       {
-        error: `Queued, but online signing failed: ${detail}`,
-        queueError,
+        error: "Online signing failed. Try again in a minute.",
         contract: parsed.address,
       },
       { status: 502 },
