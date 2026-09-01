@@ -85,10 +85,76 @@ export type SignedReceipt = {
   };
 };
 
+function nextNonce(): string {
+  return `${Date.now()}${String(process.hrtime()[1] % 1_000_000).padStart(6, "0")}`.slice(0, 19);
+}
+
+export async function postSignedNote(
+  ns: string,
+  key: string,
+  value: string,
+  extraQuery = "",
+): Promise<{ status: number; body: string }> {
+  const privateKey = loadKey();
+  const did = didFromEnv();
+  const nonce = nextNonce();
+  const normalized = normalizeMessage(value);
+  const payload = `${ns}|${key}|${nonce}|${normalized}`;
+  const signature = sign(null, Buffer.from(payload, "utf8"), privateKey).toString("base64url");
+  const url =
+    `${TECHNOCORE}/kv/${encodeURIComponent(ns)}/${encodeURIComponent(key)}` +
+    `/set-signed/${encodeURIComponent(did)}/${signature}/${nonce}/${encodeURIComponent(normalized)}` +
+    extraQuery;
+  const response = await fetch(url, {
+    headers: { "User-Agent": "flopdesk/1.0" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  });
+  const body = await response.text();
+  return { status: response.status, body: body.slice(0, 400) };
+}
+
+export async function claimOwnedRoom(room: string): Promise<"ours" | "owned" | "theirs" | "error"> {
+  if (!room.startsWith("d-")) return "error";
+  const did = didFromEnv();
+  try {
+    const existing = await fetch(`${TECHNOCORE}/kv/room-owners/${encodeURIComponent(room)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+      headers: { "User-Agent": "flopdesk/1.0" },
+    });
+    if (existing.ok) {
+      const text = await existing.text();
+      if (text.includes(did)) return "ours";
+      if (text.includes("did:key:z6Mk")) return "theirs";
+    }
+  } catch {
+    /* try claim anyway */
+  }
+  const result = await postSignedNote("room-owners", room, did, "?if_absent=1");
+  if (result.status < 300) return "owned";
+  if (result.status === 409 || /exist/i.test(result.body)) {
+    if (result.body.includes(did)) return "ours";
+    if (result.body.includes("did:key:z6Mk")) return "theirs";
+    try {
+      const again = await fetch(`${TECHNOCORE}/kv/room-owners/${encodeURIComponent(room)}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000),
+        headers: { "User-Agent": "flopdesk/1.0" },
+      }).then((r) => r.text());
+      if (again.includes(did)) return "ours";
+      if (again.includes("did:key:z6Mk")) return "theirs";
+    } catch {
+      return "error";
+    }
+  }
+  return "error";
+}
+
 export async function postSigned(room: string, text: string): Promise<SignedReceipt> {
   const key = loadKey();
   const did = didFromEnv();
-  const nonce = `${Date.now()}${String(process.hrtime()[1] % 1_000_000).padStart(6, "0")}`.slice(0, 19);
+  const nonce = nextNonce();
   const normalized = normalizeMessage(text);
   const payload = `${room}|${nonce}|${normalized}`;
   const signature = sign(null, Buffer.from(payload, "utf8"), key).toString("base64url");

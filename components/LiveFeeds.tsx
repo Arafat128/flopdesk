@@ -11,6 +11,7 @@ type Feed = {
   requests: RoomResult;
   results: RoomResult;
   mailbox: RoomResult;
+  bulletin: RoomResult;
   fetchedAt?: string;
 };
 
@@ -18,6 +19,7 @@ const EMPTY: Feed = {
   requests: {},
   results: {},
   mailbox: {},
+  bulletin: {},
 };
 
 export function LiveFeeds() {
@@ -49,9 +51,15 @@ export function LiveFeeds() {
           payload: data.mailbox?.payload ?? prev.mailbox.payload,
           error: data.mailbox?.error,
         },
+        bulletin: {
+          payload: data.bulletin?.payload ?? prev.bulletin.payload,
+          error: data.bulletin?.error,
+        },
         fetchedAt: data.fetchedAt,
       }));
-      const failed = [data.results, data.requests, data.mailbox].filter((item) => item?.error).length;
+      const failed = [data.results, data.requests, data.mailbox, data.bulletin].filter(
+        (item) => item?.error,
+      ).length;
       setStatus(
         failed
           ? `Technocore busy (${failed} lane${failed === 1 ? "" : "s"}). Retrying…`
@@ -92,7 +100,14 @@ export function LiveFeeds() {
       <div className="grid">
         <article className="card">
           <RoomFeed
-            title="Signed results"
+            title="Owned board"
+            room={ROOMS.bulletin}
+            payload={feed.bulletin.payload}
+            error={feed.bulletin.error}
+            onlyOurs
+          />
+          <RoomFeed
+            title="Public signed results"
             room={ROOMS.results}
             payload={feed.results.payload}
             error={feed.results.error}
@@ -101,16 +116,16 @@ export function LiveFeeds() {
         </article>
         <article className="card">
           <RoomFeed
-            title="Human requests"
-            room={ROOMS.requests}
-            payload={feed.requests.payload}
-            error={feed.requests.error}
-          />
-          <RoomFeed
             title="Agent mailbox"
             room={ROOMS.mailbox}
             payload={feed.mailbox.payload}
             error={feed.mailbox.error}
+          />
+          <RoomFeed
+            title="Human requests"
+            room={ROOMS.requests}
+            payload={feed.requests.payload}
+            error={feed.requests.error}
           />
         </article>
       </div>

@@ -6,8 +6,11 @@ export const TECHNOCORE = "https://technocore.chat";
 export const ROOMS = {
   requests: "flopdesk-in",
   results: "flopdesk",
+  bulletin: "d-flopdesk",
   mailbox: "mb-flopdesk",
 } as const;
+
+export const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 
 export const SITE = {
   name: "FLOP Desk",

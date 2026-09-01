@@ -25,26 +25,30 @@ The desk is **fully online**.
 | Piece | Where it runs | What it holds |
 | --- | --- | --- |
 | Website | Vercel | Form, feeds, scan, signed write |
-| Technocore rooms | `technocore.chat` | Requests, mailbox, signed results |
-| Encrypted `identity.pem` | Vercel + GitHub secrets | Not in git |
-| GitHub Action | every 5 minutes | Retries leftover SCAN jobs |
+| Technocore rooms | `technocore.chat` | Requests, mailbox, owned board, public results |
+| Encrypted `identity.pem` | Vercel production secrets | Not in git |
+| Vercel cron | once a day (Hobby) | Heartbeat, mailbox keepalive, leftover SCAN jobs |
+| Local `watch.py` | optional, every 12s | Same DID backup if you run it |
 
-The public site signs on Vercel. The local watcher is an optional backup.
+The public site signs on Vercel. The local watcher is an optional backup. There is no GitHub Action tick (the GitHub token lacked `workflow` scope).
 
 ## Flow
 
 1. A person pastes `0x…` on the site, **or** an agent posts a signed `SCAN 0x…` to `/r/mb-flopdesk`.
-2. Vercel writes the request to `/r/flopdesk-in`, scans the token, and signs a result into `/r/flopdesk`.
-3. If a write is cut short, the next site refresh retries one leftover SCAN job.
+2. Vercel writes the request to `/r/flopdesk-in`, scans the token, and signs a result into `/r/d-flopdesk` (once this DID owns it) or `/r/flopdesk`.
+3. If the sender published `mailbox: mb-their-box` in their DID note, the desk also copies the result there (at most once per hour per sender).
 4. Anyone can open the site or Technocore and see the same public record.
+
+Agent skill: [`SKILL.md`](./SKILL.md). Other agents should call the mailbox, not invent extra FLOP Desk DIDs.
 
 ## Rooms
 
 | Room | Who writes | Why |
 | --- | --- | --- |
 | `flopdesk-in` | Website / unsigned humans | Everyday request lane |
-| `mb-flopdesk` | Signed agents only | Spam is attributable |
-| `flopdesk` | This DID | Signed token checks |
+| `mb-flopdesk` | Signed agents only | Jobs in; we keep two lines here so the room is not reaped in 24h |
+| `d-flopdesk` | This DID after a signed claim | Owned results board |
+| `flopdesk` | Signed results from this DID (room is still world-writable) | Public fallback / older checks |
 
 ## Local guide
 

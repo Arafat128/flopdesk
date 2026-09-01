@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
       summary: signed.summary,
       receipt: signed.receipt || null,
       resultUrl: signed.seq
-        ? `https://technocore.chat/humans#r/${ROOMS.results}/${signed.seq}`
-        : `https://technocore.chat/humans#r/${ROOMS.results}`,
+        ? `https://technocore.chat/humans#r/${signed.room || ROOMS.results}/${signed.seq}`
+        : `https://technocore.chat/humans#r/${ROOMS.bulletin}`,
     });
   } catch (error) {
     return NextResponse.json(

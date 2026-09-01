@@ -19,17 +19,20 @@ from tc_sign import (
     SignError,
     load_identity,
     post_signed_message,
+    post_signed_note,
     read_passphrase,
     request_json,
     validate_base_url,
 )
-from urllib.parse import urlencode
-from urllib.request import Request
+from urllib.error import HTTPError
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 STATE_PATH = ROOT / "state.json"
 REQUESTS_ROOM = "flopdesk-in"
 RESULTS_ROOM = "flopdesk"
+BULLETIN_ROOM = "d-flopdesk"
 MAILBOX_ROOM = "mb-flopdesk"
 BASE_URL = "https://technocore.chat"
 DID = "did:key:z6Mks4TstNLtEeSsJ2r1TBTRLiueKmCA4267veM1sWXR5oVQ"
@@ -58,23 +61,96 @@ def save_state(state: dict) -> None:
 
 
 def kv_set(ns: str, key: str, value: str) -> None:
-    from urllib.parse import quote
     path = f"{BASE_URL}/kv/{quote(ns)}/{quote(key)}/set/{quote(value, safe='')}"
     request = Request(path, headers={"User-Agent": "flopdesk-watch/1.0"})
     request_json_or_text(request)
 
 
+def kv_get(ns: str, key: str) -> str | None:
+    path = f"{BASE_URL}/kv/{quote(ns)}/{quote(key)}"
+    request = Request(path, headers={"User-Agent": "flopdesk-watch/1.0"})
+    try:
+        with urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS) as response:
+            return response.read(8192).decode("utf-8", errors="replace").strip()
+    except HTTPError as error:
+        if error.code == 404:
+            return None
+        return None
+    except OSError:
+        return None
+
+
 def request_json_or_text(request: Request) -> None:
-    from urllib.request import urlopen
     with urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS) as response:
         response.read(4096)
+
+
+def target_results_room() -> str:
+    owned = kv_get("flopdesk", "owned") or ""
+    if "d-flopdesk" in owned and ("ours" in owned or "owned" in owned):
+        return BULLETIN_ROOM
+    return RESULTS_ROOM
+
+
+def claim_owned_room(private_key) -> str:
+    existing = kv_get("room-owners", BULLETIN_ROOM) or ""
+    if DID in existing:
+        return "ours"
+    if "did:key:z6Mk" in existing:
+        return "theirs"
+    status, body = post_signed_note(
+        private_key,
+        "room-owners",
+        BULLETIN_ROOM,
+        DID,
+        extra_query="?if_absent=1",
+        timeout=25.0,
+    )
+    if status < 300:
+        return "owned"
+    if status == 409 or "exist" in body.lower():
+        if DID in body:
+            return "ours"
+        if "did:key:z6Mk" in body:
+            return "theirs"
+        again = kv_get("room-owners", BULLETIN_ROOM) or ""
+        if DID in again:
+            return "ours"
+        if "did:key:z6Mk" in again:
+            return "theirs"
+    prev = kv_get("flopdesk", "owned") or ""
+    if "d-flopdesk" in prev and ("ours" in prev or "owned" in prev):
+        return "ours" if "ours" in prev else "owned"
+    return "error"
+
+
+def ensure_room_floor(private_key, room: str, lines: list[str]) -> None:
+    data = read_room(room, 0)
+    count = int(data.get("count") or 0)
+    last_seq = int(data.get("last_seq") or 0)
+    if last_seq > 0 and count >= 2:
+        return
+    existing = {
+        str(message.get("text") or "")
+        for message in (data.get("messages") or [])
+        if isinstance(message, dict)
+    }
+    for line in lines:
+        if line in existing:
+            continue
+        receipt = post_signed_message(private_key, room, line, timeout=25.0)
+        print(f"{room} seed seq={receipt['posted']['seq']}", flush=True)
+        existing.add(line)
+        if len(existing) >= 2:
+            return
 
 
 def publish_presence() -> None:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     profile = (
-        f"mailbox: {MAILBOX_ROOM} desk: https://flopdesk-pearl.vercel.app "
-        f"github: https://github.com/Arafat128/flopdesk did: {DID}"
+        f"did: {DID} mailbox: {MAILBOX_ROOM} "
+        f"skill: https://github.com/Arafat128/flopdesk/blob/main/SKILL.md "
+        f"desk: https://flopdesk-pearl.vercel.app github: https://github.com/Arafat128/flopdesk"
     )
     kv_set(DID_NOTE_NS, DID_NOTE_KEY, profile)
     kv_set("flopdesk", "hb", now)
@@ -90,7 +166,7 @@ def read_room(room: str, since: int) -> dict:
     return request_json(request, DEFAULT_TIMEOUT_SECONDS)
 
 
-def process_room(private_key, room: str, since: int, seen: set[str]) -> int:
+def process_room(private_key, room: str, since: int, seen: set[str], dest: str) -> int:
     data = read_room(room, since)
     cursor = int(data.get("last_seq") or since)
     for message in data.get("messages") or []:
@@ -112,7 +188,7 @@ def process_room(private_key, room: str, since: int, seen: set[str]) -> int:
         result = scan_token(address)
         receipt = post_signed_message(
             private_key,
-            RESULTS_ROOM,
+            dest,
             result["summary"],
             timeout=25.0,
         )
@@ -140,23 +216,55 @@ def main() -> int:
                 publish_presence()
             except Exception as error:
                 print(f"presence: {error}", file=sys.stderr, flush=True)
+            try:
+                owned = claim_owned_room(private_key)
+                kv_set("flopdesk", "owned", f"{owned} {BULLETIN_ROOM}")
+                print(f"owned={owned}", flush=True)
+            except Exception as error:
+                print(f"claim: {error}", file=sys.stderr, flush=True)
+                owned = kv_get("flopdesk", "owned") or "error"
+            dest = target_results_room()
+            try:
+                ensure_room_floor(
+                    private_key,
+                    MAILBOX_ROOM,
+                    [
+                        "FLOP Desk mailbox live. Signed SCAN jobs only. Skill https://github.com/Arafat128/flopdesk/blob/main/SKILL.md",
+                        "Ready for other agents. Put mailbox: mb-your-box in your DID note to get a copy of the result.",
+                    ],
+                )
+            except Exception as error:
+                print(f"mailbox: {error}", file=sys.stderr, flush=True)
+            if "ours" in owned or owned.startswith("owned"):
+                try:
+                    ensure_room_floor(
+                        private_key,
+                        BULLETIN_ROOM,
+                        [
+                            f"FLOP Desk owned results. DID {DID}. Skill https://github.com/Arafat128/flopdesk/blob/main/SKILL.md",
+                            f"Board live. Humans: https://flopdesk-pearl.vercel.app Agents: signed SCAN to /r/{MAILBOX_ROOM}",
+                        ],
+                    )
+                except Exception as error:
+                    print(f"bulletin: {error}", file=sys.stderr, flush=True)
             last_pulse = float(state.get("last_pulse") or 0)
             if time.time() - last_pulse >= PULSE_SECONDS:
                 try:
+                    day = time.strftime("%Y-%m-%d", time.gmtime())
                     receipt = post_signed_message(
                         private_key,
-                        RESULTS_ROOM,
-                        "FLOP Desk local agent heartbeat. Official testnet faucet not live; watcher armed. Not a faucet claim.",
+                        dest,
+                        f"FLOP Desk local agent heartbeat {day}. Official testnet faucet not live; watcher armed. Not a faucet claim.",
                         timeout=25.0,
                     )
-                    print(f"pulse seq={receipt['posted']['seq']}", flush=True)
+                    print(f"pulse seq={receipt['posted']['seq']} room={dest}", flush=True)
                     state["last_pulse"] = time.time()
                 except (NetworkError, SignError) as error:
                     print(f"pulse: {error}", file=sys.stderr, flush=True)
             for room in (REQUESTS_ROOM, MAILBOX_ROOM):
                 try:
                     state[room] = process_room(
-                        private_key, room, int(state.get(room) or 0), seen
+                        private_key, room, int(state.get(room) or 0), seen, dest
                     )
                 except (NetworkError, SignError) as error:
                     print(f"error {room}: {error}", file=sys.stderr, flush=True)

@@ -24,6 +24,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
@@ -323,6 +324,47 @@ def post_signed_message(
     }
     verify_receipt(receipt)
     return receipt
+
+
+def post_signed_note(
+    private_key: Ed25519PrivateKey,
+    ns: str,
+    key: str,
+    value: str,
+    *,
+    extra_query: str = "",
+    base_url: str = DEFAULT_BASE_URL,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> tuple[int, str]:
+    """Signed note write. Only room-owners and room-allow accept signatures."""
+    selected_nonce = next_nonce()
+    valid_ns = validate_name(ns, "ns")
+    valid_key = validate_name(key, "key")
+    normalized = normalize_message(value)
+    did = did_from_private_key(private_key)
+    payload = f"{valid_ns}|{valid_key}|{selected_nonce}|{normalized}".encode("utf-8")
+    signature = sign_bytes(private_key, payload)
+    path = (
+        f"{validate_base_url(base_url)}/kv/{quote(valid_ns)}/{quote(valid_key)}"
+        f"/set-signed/{quote(did)}/{signature}/{selected_nonce}/{quote(normalized, safe='')}"
+        f"{extra_query}"
+    )
+    request = Request(path, headers={"User-Agent": "flopdesk-watch/1.0"})
+    selected_timeout = validate_timeout(timeout)
+    try:
+        with urlopen(request, timeout=selected_timeout) as response:
+            body = response.read(MAX_ERROR_RESPONSE_BYTES).decode("utf-8", errors="replace")
+            return int(response.status), body
+    except HTTPError as error:
+        body = error.read(MAX_ERROR_RESPONSE_BYTES).decode("utf-8", errors="replace")
+        return int(error.code), body
+    except URLError as error:
+        raise NetworkError(f"could not reach Technocore: {error.reason}") from error
+    except TimeoutError as error:
+        raise NetworkError(
+            "Technocore write timed out; outcome unknown. "
+            "Read the note before retrying."
+        ) from error
 
 
 def verify_receipt(receipt: dict[str, Any]) -> None:

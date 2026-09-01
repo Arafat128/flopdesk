@@ -19,15 +19,17 @@ async function loadRoom(room: string): Promise<RoomResult> {
 }
 
 export async function GET() {
-  const [requests, results, mailbox] = await Promise.all([
+  const [requests, results, mailbox, bulletin] = await Promise.all([
     loadRoom(ROOMS.requests),
     loadRoom(ROOMS.results),
     loadRoom(ROOMS.mailbox),
+    loadRoom(ROOMS.bulletin),
   ]);
   return NextResponse.json({
     requests,
     results,
     mailbox,
+    bulletin,
     fetchedAt: new Date().toISOString(),
   });
 }
