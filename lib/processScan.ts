@@ -5,14 +5,6 @@ import { postSigned, type SignedReceipt } from "./onlineSign";
 import { scanToken } from "./scanLite";
 import { readNote, readRoom, setNote } from "./technocore";
 
-async function targetRoom(): Promise<string> {
-  const owned = await readNote(AGENT.ns, "owned").catch(() => null);
-  if (owned && /d-flopdesk/.test(owned) && /(ours|owned)/.test(owned)) {
-    return ROOMS.bulletin;
-  }
-  return ROOMS.results;
-}
-
 export async function alreadyPosted(address: string): Promise<boolean | "unknown"> {
   const needle = address.toLowerCase();
   const rooms = [ROOMS.results, ROOMS.bulletin];
@@ -65,7 +57,7 @@ export async function processScan(
     return { summary: `skipped ${address}: could not read results board`, skipped: true };
   }
   const result = await scanToken(address);
-  const room = await targetRoom();
+  const room = ROOMS.results;
   const receipt = await postSigned(room, result.summary);
   await maybeReplyMailbox(fromDid, result.summary).catch(() => undefined);
   return { seq: receipt.posted.seq, summary: receipt.text, receipt, room };

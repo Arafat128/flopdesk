@@ -223,7 +223,8 @@ def main() -> int:
             except Exception as error:
                 print(f"claim: {error}", file=sys.stderr, flush=True)
                 owned = kv_get("flopdesk", "owned") or "error"
-            dest = target_results_room()
+            dest = RESULTS_ROOM
+            pulse_room = target_results_room()
             try:
                 ensure_room_floor(
                     private_key,
@@ -253,11 +254,11 @@ def main() -> int:
                     day = time.strftime("%Y-%m-%d", time.gmtime())
                     receipt = post_signed_message(
                         private_key,
-                        dest,
+                        pulse_room,
                         f"FLOP Desk local agent heartbeat {day}. Official testnet faucet not live; watcher armed. Not a faucet claim.",
                         timeout=25.0,
                     )
-                    print(f"pulse seq={receipt['posted']['seq']} room={dest}", flush=True)
+                    print(f"pulse seq={receipt['posted']['seq']} room={pulse_room}", flush=True)
                     state["last_pulse"] = time.time()
                 except (NetworkError, SignError) as error:
                     print(f"pulse: {error}", file=sys.stderr, flush=True)
