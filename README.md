@@ -2,7 +2,7 @@
 
 A public **agent inbox** plus a **signed token check** desk for Technocore.
 
-Humans paste a contract on the website. Agents send a signed `SCAN 0x…` job. A watcher on the operator’s computer publishes an attributable result from one DID.
+Humans paste a contract on the website. Agents send a signed `SCAN 0x…` job. Vercel signs the result with one DID.
 
 This is not an official Flop Labs product. It does not guarantee `$FLOP`.
 
@@ -52,32 +52,16 @@ Agent skill: [`SKILL.md`](./SKILL.md). Other agents should call the mailbox, not
 
 ## Local guide
 
-You do **not** need this for the public website. Use it only as a backup signer on a PC that already has `identity.pem`.
-
-**This operator’s paths (Windows):**
-
-| Item | Path |
-| --- | --- |
-| Encrypted key | `D:\grock\FLOCK\identity.pem` |
-| Passphrase file | `D:\grock\FLOCK\.identity-passphrase` |
-| Watcher | `D:\grock\FLOCK\flopdesk\agent\watch.py` |
-
-```powershell
-Set-Location D:\grock\FLOCK\flopdesk\agent
-python -m pip install -r requirements.txt
-python watch.py --key D:\grock\FLOCK\identity.pem --passphrase-file D:\grock\FLOCK\.identity-passphrase
-```
-
-`--once` processes new jobs and exits. Without it, the process polls every 12 seconds.
-
-**From a clone of this repo** (use your own key, never copy someone else’s):
+You do **not** need this for the public website. Use it only as an optional backup signer with **your own** encrypted key. Never copy someone else’s DID or `identity.pem`.
 
 ```powershell
 git clone https://github.com/Arafat128/flopdesk.git
 Set-Location .\flopdesk\agent
 python -m pip install -r requirements.txt
-python watch.py --key C:\path\to\identity.pem --passphrase-file C:\path\to\.identity-passphrase
+python watch.py --key C:\path\to\your\identity.pem --passphrase-file C:\path\to\your\.identity-passphrase
 ```
+
+`--once` processes new jobs and exits. Without it, the process polls every 12 seconds.
 
 One-off scan (no Technocore write):
 
@@ -85,21 +69,18 @@ One-off scan (no Technocore write):
 python -c "from scan_lite import scan_token; print(scan_token('0x55d398326f99059fF775485246999027B3197955')['summary'])"
 ```
 
-Do not commit `identity.pem` or the passphrase. The website does not need the local watcher while Vercel secrets are set.
-
-## HertzFlow
-
-This PC has Surf authenticated in the keychain. Full HertzFlow forensics still cost credits and take minutes, so the **public desk does not auto-run them**. Lite checks are the everyday path. Plug HertzFlow in later for operator-triggered deep reports.
+Do not commit `identity.pem` or the passphrase.
 
 ## Website
 
 ```powershell
-Set-Location D:\grock\FLOCK\flopdesk
+git clone https://github.com/Arafat128/flopdesk.git
+Set-Location .\flopdesk
 npm install
 npm run dev
 ```
 
-Production already stores `TECHNOCORE_IDENTITY_PEM` and `TECHNOCORE_PASSPHRASE` as Vercel secrets. Do not put them in git.
+Production stores `TECHNOCORE_IDENTITY_PEM` and `TECHNOCORE_PASSPHRASE` as Vercel secrets. Do not put them in git. The public desk uses Dexscreener + GoPlus lite checks only.
 
 ## License
 

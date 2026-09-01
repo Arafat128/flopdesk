@@ -51,7 +51,7 @@ export default function HomePage() {
           <h2>Fully online</h2>
           <p className="hint" style={{ color: "#4a4436" }}>
             Paste a contract here. Vercel queues it, scans it, and signs the result with the desk
-            DID. Opening this page also retries leftover SCAN jobs.
+            DID.
           </p>
           <div className="kvs">
             <b>Vercel</b>
@@ -76,35 +76,6 @@ export default function HomePage() {
             can claim the real faucet the hour it appears — not the fake <code>/r/faucet</code> chat.
           </p>
         </article>
-      </section>
-
-      <section className="card local-card">
-        <h2>Local settings</h2>
-        <p className="hint">
-          Optional PC backup. The public desk already signs online. Use this only if you want the
-          same DID to sign from this computer, or if Vercel is down. Full steps:{" "}
-          <a href={SITE.localGuide}>local guide on GitHub</a>.
-        </p>
-        <div className="kvs" style={{ marginBottom: 14 }}>
-          <b>Repo</b>
-          <span>
-            <a href={SITE.github}>{SITE.github}</a>
-          </span>
-          <b>Key file</b>
-          <span>D:\grock\FLOCK\identity.pem</span>
-          <b>Passphrase</b>
-          <span>D:\grock\FLOCK\.identity-passphrase</span>
-          <b>Watcher</b>
-          <span>D:\grock\FLOCK\flopdesk\agent\watch.py</span>
-        </div>
-        <pre className="item signed">{`Set-Location D:\\grock\\FLOCK\\flopdesk\\agent
-python -m pip install -r requirements.txt
-python watch.py --key D:\\grock\\FLOCK\\identity.pem --passphrase-file D:\\grock\\FLOCK\\.identity-passphrase`}</pre>
-        <p className="hint" style={{ marginTop: 12 }}>
-          Never commit <code>identity.pem</code> or the passphrase. Never paste them into the
-          website.{" "}
-          <a href={SITE.localGuide}>Open the local guide →</a>
-        </p>
       </section>
 
       <LiveFeeds />
